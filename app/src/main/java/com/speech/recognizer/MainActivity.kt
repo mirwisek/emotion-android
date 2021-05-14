@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.speech.recognizer.databinding.ActivityMainBinding
 import java.io.File
+import java.lang.Exception
 import java.util.*
 
 
@@ -20,14 +21,7 @@ class MainActivity : AppCompatActivity() {
     private var timer: Timer? = null
     private var soundRecorder: SoundRecorder? = null
 
-    private val task = object: TimerTask() {
-        override fun run() {
-            // Can't update value from background thread, so update the value on UI Thread
-            runOnUiThread {
-                vm.timerValue.value = vm.timerValue.value!! + 1
-            }
-        }
-    }
+    private var audioRecorder: AudioRecorder? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,15 +75,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 RecordingState.COMPLETE -> {
                     // When recording is completed, perform prediction by sending the file to API
-                    soundRecorder?.outputFile?.let { fname ->
-                        vm.predict(File(fname))
-                    }
-                    log("The complete status ${soundRecorder?.outputFile}")
+                    vm.predict(File(getFile()))
                 }
                 else -> {}
             }
         }
-
 
         vm.isRecording.observe(this) {
 
@@ -97,26 +87,69 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun getTask(): TimerTask {
+        return object: TimerTask() {
+            override fun run() {
+                // Can't update value from background thread, so update the value on UI Thread
+                runOnUiThread {
+                    vm.timerValue.value = vm.timerValue.value!! + 1
+                }
+            }
+        }
+    }
+
     // Stop recording and reset time, change state RECORDING -> COMPLETE
     private fun stopRecording() {
-        soundRecorder?.stopRecording()
+//        soundRecorder?.stopRecording()
+        audioRecorder?.stopRecording()
         // Reset TIMER
-        vm.recordingState.value = RecordingState.COMPLETE
         timer?.cancel()
         timer = null
     }
 
+//    private fun startRecording() {
+//        if(soundRecorder == null) {
+//            val filePath = getExternalFilesDir(null)?.absolutePath + "/recording.wav"
+//            soundRecorder = SoundRecorder(filePath)
+//        }
+//        soundRecorder!!.startRecording()
+//        vm.recordingState.value = RecordingState.RECORDING
+//        // Start Timer
+//        timer = Timer(true)
+//        timer!!.scheduleAtFixedRate(task, 0L, 1000L)
+//    }
+
     private fun startRecording() {
-        if(soundRecorder == null) {
-            val filePath = getExternalFilesDir(null)?.absolutePath + "/recording.wav"
-            soundRecorder = SoundRecorder(filePath)
+        if(audioRecorder == null) {
+            val listener = object: OnAudioRecordedListener {
+                override fun onComplete() {
+                    runOnUiThread {
+                        vm.recordingState.value = RecordingState.COMPLETE
+                    }
+                }
+
+                override fun onError(ex: Exception?) {
+                    // TODO: Update the error
+                    runOnUiThread {
+                        vm.recordingState.value = RecordingState.COMPLETE
+                        ex?.printStackTrace()
+                    }
+                }
+
+            }
+            audioRecorder = AudioRecorder(getFile(), listener)
         }
-        soundRecorder!!.startRecording()
+        audioRecorder!!.startRecording()
         vm.recordingState.value = RecordingState.RECORDING
         // Start Timer
         timer = Timer(true)
-        timer!!.scheduleAtFixedRate(task, 0L, 1000L)
+        timer!!.scheduleAtFixedRate(getTask(), 0L, 1000L)
     }
+
+    private fun getFile(): String {
+        return getExternalFilesDir(null)?.absolutePath + "/recording.wav"
+    }
+
 
     // make sure the appropriate permissions are granted
     private fun proceedAfterPermission() {

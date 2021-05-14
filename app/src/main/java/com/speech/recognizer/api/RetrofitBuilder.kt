@@ -39,8 +39,8 @@ object RetrofitBuilder {
         .build()
 
     private fun getRetrofit() = Retrofit.Builder()
-        .baseUrl("http://192.168.10.3:5000")
-//        .baseUrl(BuildConfig.BASE_API_URL)
+//        .baseUrl("http://192.168.10.4:5000")
+        .baseUrl(BuildConfig.BASE_API_URL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpClient)
         .build()
