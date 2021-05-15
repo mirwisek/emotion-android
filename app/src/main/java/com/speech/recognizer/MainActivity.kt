@@ -3,23 +3,32 @@ package com.speech.recognizer
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.children
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.snackbar.Snackbar
 import com.speech.recognizer.databinding.ActivityMainBinding
 import java.io.File
-import java.lang.Exception
 import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var vm: MainViewModel
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var snackbar: Snackbar
+    private lateinit var snackProgressBar: ProgressBar
+    private var snackProgress = 5
+    private var snackTimerStart = MAX_AUDIO_LENGTH-snackProgress
 
     private var timer: Timer? = null
-    private var soundRecorder: SoundRecorder? = null
+//    private var soundRecorder: SoundRecorder? = null
 
     private var audioRecorder: AudioRecorder? = null
 
@@ -28,11 +37,25 @@ class MainActivity : AppCompatActivity() {
 
         vm = ViewModelProvider(this).get(MainViewModel::class.java)
 
-        val binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         binding.lifecycleOwner = this
         binding.vm = vm
 
         setContentView(binding.root)
+
+        snackbar = Snackbar.make(
+            binding.root,
+            "The recording will auto-stop in $snackProgress sec",
+            Snackbar.LENGTH_INDEFINITE
+        )
+//        snackProgressBar = ProgressBar(this).apply {
+//            max = 5
+//            progress = 5
+//            isIndeterminate = false
+//        }
+
+//        val snackText = snackbar.view.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)
+//        (snackText.parent as ViewGroup).addView(snackProgressBar)
 
         binding.btnPlay.setOnClickListener {
             if(vm.isComplete.value == true) {
@@ -43,7 +66,15 @@ class MainActivity : AppCompatActivity() {
                         proceedAfterPermission()
                     }
                     RecordingState.RECORDING -> {
-                        stopRecording()
+                        // Make sure the audio is at least the minimum duration before stopping
+                        if (vm.timerValue.value!! < MIN_AUDIO_LENGTH)
+                            Snackbar.make(
+                                binding.root,
+                                "The audio duration must be at least 5 sec",
+                                Snackbar.LENGTH_SHORT
+                            ).show()
+                        else
+                            stopRecording()
                     }
                     else -> { }
                 }
@@ -65,10 +96,20 @@ class MainActivity : AppCompatActivity() {
         vm.recordingState.observe(this) { state ->
             when (state) {
                 RecordingState.IDLE -> { // When initialized to IDLE or from COMPLETE -> IDLE
-                    binding.btnPlay.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_play))
+                    binding.btnPlay.setImageDrawable(
+                        ContextCompat.getDrawable(
+                            this,
+                            R.drawable.ic_play
+                        )
+                    )
                 }
                 RecordingState.RECORDING -> { // While Recording
-                    binding.btnPlay.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_stop))
+                    binding.btnPlay.setImageDrawable(
+                        ContextCompat.getDrawable(
+                            this,
+                            R.drawable.ic_stop
+                        )
+                    )
                 }
                 RecordingState.PLAYING -> {
                     // Just for debugging sake
@@ -80,11 +121,6 @@ class MainActivity : AppCompatActivity() {
                 else -> {}
             }
         }
-
-        vm.isRecording.observe(this) {
-
-        }
-
     }
 
     private fun getTask(): TimerTask {
@@ -93,6 +129,22 @@ class MainActivity : AppCompatActivity() {
                 // Can't update value from background thread, so update the value on UI Thread
                 runOnUiThread {
                     vm.timerValue.value = vm.timerValue.value!! + 1
+                    val time = vm.timerValue.value!!
+
+                    // Show a snackbar 5 sec before auto-stop
+                    if(time == snackTimerStart) {
+                        snackbar.show()
+                    } else if(time in snackTimerStart..MAX_AUDIO_LENGTH) {
+//                        snackProgressBar.progress = --snackProgress
+                        --snackProgress
+                        snackbar.setText("The recording will auto-stop in $snackProgress sec")
+                    }
+
+                    if(time == MAX_AUDIO_LENGTH) {
+                        snackbar.dismiss()
+                        stopRecording()
+                        snackProgress = 5   // Rest value
+                    }
                 }
             }
         }
@@ -192,6 +244,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        // Maximum length/limit of audio
+        const val MAX_AUDIO_LENGTH = 20L
+        const val MIN_AUDIO_LENGTH = 5L
         const val RC_RECORD_AUDIO = 1023
     }
 }
