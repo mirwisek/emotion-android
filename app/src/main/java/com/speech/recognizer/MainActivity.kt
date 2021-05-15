@@ -89,7 +89,13 @@ class MainActivity : AppCompatActivity() {
 
         // When API returns a result label or error, update the image (SMILE) accordingly
         vm.smile.observe(this) { drawable ->
+            log("Drawable changed to $drawable")
+            log("Error to ${R.drawable.error}")
             binding.smile.setImageDrawable(ContextCompat.getDrawable(this, drawable))
+        }
+
+        vm.apiSuccessResult.observe(this) {
+            log("The API Result = ${it}")
         }
 
         // Observe different states of Recording Phases and reflect accordingly

@@ -11,19 +11,21 @@ class MainViewModel : ViewModel() {
 
     val recordingState = MutableLiveData(RecordingState.IDLE)
 
-    val apiSuccessResult = MutableLiveData<String?>()
+    val apiSuccessResult = MutableLiveData<String?>()   // The formatted result statement
+    val apiSuccessTag = MutableLiveData<String?>()  // Only the result "happy", "sad" etc.
     val apiErrorResult = MutableLiveData<Exception?>()
     val isPredictionProcessing = MutableLiveData(false)
 
 
-    val smile = Transformations.map(apiSuccessResult) { res ->
-        when (res) {
-            null -> R.drawable.error
-            "happy" -> R.drawable.happy
-            "sad" -> R.drawable.sad
-            "neutral" -> R.drawable.neutral
-            "angry" -> R.drawable.angry
-            else -> R.drawable.error
+    val smile = Transformations.map(apiSuccessTag) { res ->
+        res?.let { value ->
+            when (value) {
+                "happy" -> R.drawable.happy
+                "sad" -> R.drawable.sad
+                "neutral" -> R.drawable.neutral
+                "angry" -> R.drawable.angry
+                else -> R.drawable.error
+            }
         }
     }
 
@@ -65,6 +67,7 @@ class MainViewModel : ViewModel() {
                 onSuccess = { mRes ->
                     apiErrorResult.postValue(null)
                     apiSuccessResult.postValue("You are feeling ${mRes.result!!}")
+                    apiSuccessTag.postValue(mRes.result)
                 },
                 // If Exception, set the success to null incase if it contained a previous valid value
                 onFailure = { ex ->
