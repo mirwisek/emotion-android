@@ -9,12 +9,12 @@ class MainViewModel : ViewModel() {
 
     private var api = RetrofitBuilder
 
-    val recordingState = MutableLiveData(RecordingState.IDLE)
+    val recordingState = MutableLiveData(RecordingState.IDLE)   // Store the current recording state
 
     val apiSuccessResult = MutableLiveData<String?>()   // The formatted result statement
     val apiSuccessTag = MutableLiveData<String?>()  // Only the result "happy", "sad" etc.
     val apiErrorResult = MutableLiveData<Exception?>()
-    val isPredictionProcessing = MutableLiveData(false)
+    val isPredictionProcessing = MutableLiveData(false) // Is Prediction being processed?
 
 
     val smile = Transformations.map(apiSuccessTag) { res ->
