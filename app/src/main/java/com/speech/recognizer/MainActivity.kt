@@ -85,17 +85,16 @@ class MainActivity : AppCompatActivity() {
         binding.btnReset.setOnClickListener {
             vm.recordingState.value = RecordingState.IDLE
             vm.timerValue.value = 0L
+            vm.apiSuccessResult.value = null
+            vm.apiErrorResult.value = null
+            vm.apiSuccessTag.value = null
         }
 
         // When API returns a result label or error, update the image (SMILE) accordingly
         vm.smile.observe(this) { drawable ->
-            log("Drawable changed to $drawable")
-            log("Error to ${R.drawable.error}")
-            binding.smile.setImageDrawable(ContextCompat.getDrawable(this, drawable))
-        }
-
-        vm.apiSuccessResult.observe(this) {
-            log("The API Result = ${it}")
+            drawable?.let {
+                binding.smile.setImageDrawable(ContextCompat.getDrawable(this, it))
+            }
         }
 
         // Observe different states of Recording Phases and reflect accordingly
@@ -122,11 +121,13 @@ class MainActivity : AppCompatActivity() {
                 }
                 RecordingState.COMPLETE -> {
                     // When recording is completed, perform prediction by sending the file to API
-                    vm.predict(File(getFile()))
+//                    vm.predict(File(getFile()))
+                    vm.predict(File(getExternalFilesDir(null)?.absolutePath +"/recording.wav"))
                 }
                 else -> {}
             }
         }
+
     }
 
     private fun getTask(): TimerTask {
